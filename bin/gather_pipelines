@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#
+# Run this script to collect openshift-pipelines related debug information
+
+set -eux -o pipefail
+
+COMPONENT="tekton.dev"
+BIN=oc
+LOGS_DIR=${LOGS_DIR:-must-gather-logs}
+
+# Describe and Get all api resources of component across cluster
+
+APIRESOURCES=$(${BIN} get crds -o jsonpath="{.items[*].metadata.name}" | tr ' ' '\n' | grep ${COMPONENT})
+for APIRESOURCE in ${APIRESOURCES[@]}; do
+    NAMESPACES=$(${BIN} get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
+    for NAMESPACE in ${NAMESPACES[@]}; do
+        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
+        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log
+        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml
+    done
+done
+
+# Gather the YAML of Cluster-Scoped CRDS provided by openshift-pipelines operator
+
+APIRESOURCES=(tektonconfigs tektonaddons tektonpipelines tektontriggers clustertasks clustertriggerbindings clusterinterceptors)
+
+for APIRESOURCE in ${APIRESOURCES[@]}; do
+    mkdir -p ${LOGS_DIR}/${APIRESOURCE}
+    ${BIN} describe ${APIRESOURCE} >${LOGS_DIR}/${APIRESOURCE}/describe.log
+    ${BIN} get ${APIRESOURCE} -o=yaml >${LOGS_DIR}/${APIRESOURCE}/get.yaml
+done
+
+# Collect pod logs from openshift-operator for openshift-pipelines-operator
+PODS=$(${BIN} get pods -n openshift-operators -o jsonpath="{.items[*].metadata.name}" | tr ' ' '\n' | grep "openshift-pipelines")
+mkdir -p ${LOGS_DIR}/openshift-operators/pods
+for POD in ${PODS[@]}; do
+    ${BIN} logs --all-containers=true -n openshift-operators ${POD} >${LOGS_DIR}/openshift-operators/pods/${POD}.log
+done
+
+# Collect pod logs, describe & get of api-resources in openshift-pipelines and tekton-pipelines namespace
+
+NAMESPACES=(openshift-pipelines tekton-pipelines)
+APIRESOURCES=(configmaps pods roles rolebindings clusterrole clusterrolebindings serviceaccounts services events podsecuritypolicies poddisruptionbudgets)
+
+for NAMESPACE in ${NAMESPACES[@]}; do
+    PODS=$(${BIN} get pods -n ${NAMESPACE} -o jsonpath="{.items[*].metadata.name}")
+    mkdir -p ${LOGS_DIR}/${NAMESPACE}/pods
+    for POD in ${PODS[@]}; do
+        ${BIN} logs --all-containers=true -n ${NAMESPACE} ${POD} >${LOGS_DIR}/${NAMESPACE}/pods/${POD}.log
+    done
+
+    for APIRESOURCE in ${APIRESOURCES[@]}; do
+        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
+        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log
+        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml
+    done
+done
+
+APIRESOURCES=(eventlistener taskrun pipelinerun)
+for APIRESOURCE in ${APIRESOURCES[@]}; do
+    NAMESPACES=$(${BIN} get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
+    for NAMESPACE in ${NAMESPACES[@]}; do
+        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
+        RESOURCES=$(${BIN} get ${APIRESOURCE} --namespace=${NAMESPACE} --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.name}{"\n"}{end}')
+        for RESOURCE in ${RESOURCES[@]}; do
+            tkn ${APIRESOURCE} logs ${RESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/${RESOURCE}.log
+        done
+    done
+done
