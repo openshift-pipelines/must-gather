@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+export LOGS_DIR="/must-gather"
+
+/usr/bin/gather_pipelines
+
+exit 0
