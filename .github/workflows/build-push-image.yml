@@ -9,7 +9,7 @@ on:
     - cron: "0 0 * * *" # every day at midnight
 
 env:
-  IMAGE_NAME: openshift-pipelines/must-gather
+  IMAGE_NAME: openshift-pipeline/must-gather
   IMAGE_REGISTRY: quay.io
   IMAGE_TAGS: "4.8 latest"
 
