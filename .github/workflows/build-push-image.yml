@@ -21,7 +21,6 @@ jobs:
       # Checkout must-gather github repository
       - name: Checkout must-gather repo
         uses: actions/checkout@v2
-
       # Build image using Buildah action
       - name: Build Image
         id: build_image
