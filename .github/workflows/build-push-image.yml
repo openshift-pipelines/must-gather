@@ -9,7 +9,7 @@ on:
     - cron: "0 0 * * *" # every day at midnight
 
 env:
-  IMAGE_NAME: openshift-pipelines/must-gather
+  IMAGE_NAME: must-gather
   IMAGE_REGISTRY: quay.io
   IMAGE_TAGS: "4.8 latest"
 
@@ -21,6 +21,7 @@ jobs:
       # Checkout must-gather github repository
       - name: Checkout must-gather repo
         uses: actions/checkout@v2
+
       # Build image using Buildah action
       - name: Build Image
         id: build_image
@@ -37,7 +38,7 @@ jobs:
         with:
           image: ${{ steps.build_image.outputs.image }}
           tags: ${{ steps.build_image.outputs.tags }}
-          registry: ${{ env.IMAGE_REGISTRY }}/${{ secrets.REGISTRY_REPO }}
+          registry: quay.io/openshift-pipelines
           username: ${{ secrets.QUAY_REGISTRY_USERNAME }}
           password: ${{ secrets.QUAY_REGISTRY_PASSWORD }}
       - name: Echo outputs
