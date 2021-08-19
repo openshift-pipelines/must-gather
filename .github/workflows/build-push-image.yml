@@ -9,7 +9,7 @@ on:
     - cron: "0 0 * * *" # every day at midnight
 
 env:
-  IMAGE_NAME: must-gather
+  IMAGE_NAME: openshift-pipelines/must-gather
   IMAGE_REGISTRY: quay.io
   IMAGE_TAGS: "4.8 latest"
 
@@ -27,7 +27,7 @@ jobs:
         id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: ${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_REGISTRY}}/${{ env.IMAGE_NAME }}
           tags: ${{ env.IMAGE_TAGS }}
           dockerfiles: ./Dockerfile
 
