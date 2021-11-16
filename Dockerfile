@@ -4,7 +4,7 @@ FROM fedora as fetcher
 COPY hack/ .
 RUN /bin/bash ./fetch-openshift-clients.sh
 
-FROM quay.io/openshift/origin-must-gather:4.8.0 as gather
+FROM quay.io/openshift/origin-must-gather:4.9.0 as gather
 
 FROM registry.access.redhat.com/ubi8/ubi:8.4
 
