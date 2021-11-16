@@ -11,8 +11,6 @@ FROM registry.access.redhat.com/ubi8/ubi:8.4
 COPY --from=gather /usr/bin/gather* /usr/bin
 COPY --from=gather /usr/bin/openshift-must-gather /usr/bin
 COPY --from=gather /usr/bin/version /usr/bin
-
-# Copy all collection scripts to /usr/bin
 COPY bin/* /usr/bin/
 
 RUN chmod +x /usr/bin/gather_pipelines
