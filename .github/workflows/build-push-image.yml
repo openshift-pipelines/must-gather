@@ -23,25 +23,52 @@ jobs:
       # Checkout must-gather github repository
       - name: Checkout must-gather repo
         uses: actions/checkout@v2
-      # Build image using Buildah action
-      - name: Build Image
-        id: build_image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ env.IMAGE_TAGS }}
-          dockerfiles: ./Dockerfile
+      - name: Prepare
+        id: prep
+        run: |
+          DOCKER_IMAGE=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          VERSION=latest
+          SHORTREF=${GITHUB_SHA::8}
 
-      # Push the image to Quay.io (Image Registry)
-      - name: Push To Quay
-        uses: redhat-actions/push-to-registry@v2
-        id: push
+          # If this is git tag, use the tag name as a docker tag
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}"
+
+          # If the VERSION looks like a version number, assume that
+          # this is the most recent version of the image and also
+          # tag it 'latest'.
+          if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            TAGS="$TAGS,${DOCKER_IMAGE}:latest"
+          fi
+
+          # Set output parameters.
+          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=docker_image::${DOCKER_IMAGE}
+      # Setup qemu and buildx
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@master
         with:
-          image: ${{ steps.build_image.outputs.image }}
-          tags: ${{ steps.build_image.outputs.tags }}
+          platforms: all
+      - name: Setup Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+      # Auth on registry
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
           registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ secrets.QUAY_REGISTRY_USERNAME }}
           password: ${{ secrets.QUAY_REGISTRY_PASSWORD }}
-      - name: Echo outputs
-        run: |
-          echo "${{ toJSON(steps.push.outputs) }}"
+      # Build image using buildx
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+          push: true
+          tags: ${{ steps.prep.outputs.tags }}
