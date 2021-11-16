@@ -3,6 +3,8 @@
 name: Build and Push Image
 on:
   push:
+    tags:
+      - *
     branches:
       - main
     paths-ignore:
@@ -13,7 +15,6 @@ on:
 env:
   IMAGE_NAME: openshift-pipeline/must-gather
   IMAGE_REGISTRY: quay.io
-  IMAGE_TAGS: "4.8 latest"
 
 jobs:
   build-and-push:
