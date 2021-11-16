@@ -2,7 +2,11 @@
 # the image whenever there a code merge happens.
 name: Build and Push Image
 on:
+  pull_request:
+    branches:
+      - main
   push:
+    workflow_dispatch:
     tags:
       - '*'
     branches:
@@ -71,5 +75,5 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/ppc64le,linux/s390x
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags }}
