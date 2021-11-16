@@ -1,15 +1,23 @@
 FROM gcr.io/tekton-releases/dogfooding/tkn:latest as tkn
+FROM fedora as fetcher
 
-FROM quay.io/openshift/origin-must-gather:4.8.0
+COPY hack/ .
+RUN /bin/bash ./fetch-openshift-clients.sh
 
-# Save original gather script
-RUN mv /usr/bin/gather /usr/bin/gather_original
+FROM quay.io/openshift/origin-must-gather:4.8.0 as gather
+
+FROM registry.access.redhat.com/ubi8/ubi:8.4
+
+COPY --from=gather /usr/bin/gather* /usr/bin
+COPY --from=gather /usr/bin/openshift-must-gather /usr/bin
+COPY --from=gather /usr/bin/version /usr/bin
 
 # Copy all collection scripts to /usr/bin
 COPY bin/* /usr/bin/
 
 RUN chmod +x /usr/bin/gather_pipelines
 
+COPY --from=fetcher /usr/bin/oc /usr/bin/oc
 COPY --from=tkn /usr/local/bin/tkn /usr/local/bin/tkn
 
 CMD ["bash", "/usr/bin/gather"]
