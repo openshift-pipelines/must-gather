@@ -2,6 +2,11 @@
 
 `must-gather` is a tool built on top of [OpenShift must-gather](https://github.com/openshift/must-gather) that expands its capabilities to gather openshift-pipelines debug information.
 
+It currently supports the following architectures:
+- `linux/amd64`
+- `linux/ppc64le`
+- `linux/s390x`
+
 ## Usage
 
 ```sh
