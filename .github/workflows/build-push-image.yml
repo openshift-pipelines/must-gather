@@ -4,7 +4,7 @@ name: Build and Push Image
 on:
   push:
     tags:
-      - *
+      - '*'
     branches:
       - main
     paths-ignore:
