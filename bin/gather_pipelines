@@ -26,8 +26,8 @@ APIRESOURCES=(tektonconfigs tektonaddons tektonpipelines tektontriggers clustert
 
 for APIRESOURCE in ${APIRESOURCES[@]}; do
     mkdir -p ${LOGS_DIR}/${APIRESOURCE}
-    ${BIN} describe ${APIRESOURCE} >${LOGS_DIR}/${APIRESOURCE}/describe.log
-    ${BIN} get ${APIRESOURCE} -o=yaml >${LOGS_DIR}/${APIRESOURCE}/get.yaml
+    ${BIN} describe ${APIRESOURCE} >${LOGS_DIR}/${APIRESOURCE}/describe.log || true
+    ${BIN} get ${APIRESOURCE} -o=yaml >${LOGS_DIR}/${APIRESOURCE}/get.yaml || true
 done
 
 # Collect pod logs from openshift-operator for openshift-pipelines-operator
@@ -46,13 +46,13 @@ for NAMESPACE in ${NAMESPACES[@]}; do
     PODS=$(${BIN} get pods -n ${NAMESPACE} -o jsonpath="{.items[*].metadata.name}")
     mkdir -p ${LOGS_DIR}/${NAMESPACE}/pods
     for POD in ${PODS[@]}; do
-        ${BIN} logs --all-containers=true -n ${NAMESPACE} ${POD} >${LOGS_DIR}/${NAMESPACE}/pods/${POD}.log
+        ${BIN} logs --all-containers=true -n ${NAMESPACE} ${POD} >${LOGS_DIR}/${NAMESPACE}/pods/${POD}.log || true
     done
 
     for APIRESOURCE in ${APIRESOURCES[@]}; do
         mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
-        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log
-        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml
+        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log || true
+        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml || true
     done
 done
 
