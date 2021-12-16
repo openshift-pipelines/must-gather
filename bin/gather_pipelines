@@ -22,7 +22,7 @@ done
 
 # Gather the YAML of Cluster-Scoped CRDS provided by openshift-pipelines operator
 
-APIRESOURCES=(tektonconfigs tektonaddons tektonpipelines tektontriggers clustertasks clustertriggerbindings clusterinterceptors)
+APIRESOURCES=(tektonconfigs tektoninstallersets tektonaddons tektonpipelines tektontriggers clustertasks clustertriggerbindings clusterinterceptors)
 
 for APIRESOURCE in ${APIRESOURCES[@]}; do
     mkdir -p ${LOGS_DIR}/${APIRESOURCE}
