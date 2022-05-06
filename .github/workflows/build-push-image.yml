@@ -27,7 +27,7 @@ jobs:
     steps:
       # Checkout must-gather github repository
       - name: Checkout must-gather repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Prepare
         id: prep
         run: |
