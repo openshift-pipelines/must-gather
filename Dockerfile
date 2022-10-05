@@ -1,10 +1,13 @@
+ARG OPENSHIFT_VERSION=4.11
+
 FROM gcr.io/tekton-releases/dogfooding/tkn:latest as tkn
 FROM fedora as fetcher
+ARG OPENSHIFT_VERSION
 
 COPY hack/ .
-RUN /bin/bash ./fetch-openshift-clients.sh
+RUN /bin/bash ./fetch-openshift-clients.sh ${OPENSHIFT_VERSION}
 
-FROM quay.io/openshift/origin-must-gather:4.11 as gather
+FROM quay.io/openshift/origin-must-gather:$OPENSHIFT_VERSION as gather
 
 FROM registry.access.redhat.com/ubi8/ubi:8.6
 
