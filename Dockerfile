@@ -16,7 +16,8 @@ COPY --from=gather /usr/bin/openshift-must-gather /usr/bin
 COPY --from=gather /usr/bin/version /usr/bin
 COPY bin/* /usr/bin/
 
-RUN chmod +x /usr/bin/gather_pipelines
+RUN yum install --setopt=tsflags=nodocs -y jq rsync && yum clean all && rm -rf /var/cache/yum/* \
+&& chmod +x /usr/bin/gather_pipelines
 
 COPY --from=fetcher /usr/bin/oc /usr/bin/oc
 COPY --from=tkn /usr/local/bin/tkn /usr/local/bin/tkn
