@@ -2,68 +2,80 @@
 #
 # Run this script to collect openshift-pipelines related debug information
 
-set -eux -o pipefail
+set -eu -o pipefail
 
-COMPONENT="tekton.dev"
-BIN=oc
 LOGS_DIR=${LOGS_DIR:-must-gather-logs}
 
-# Describe and Get all api resources of component across cluster
+mkdir -p ${LOGS_DIR}
+echo "inspecting crd, clusterversion .."
+oc adm inspect $(oc get crd -o name | grep tekton) clusterversion/version --dest-dir=${LOGS_DIR}
 
-APIRESOURCES=$(${BIN} get crds -o jsonpath="{.items[*].metadata.name}" | tr ' ' '\n' | grep ${COMPONENT})
-for APIRESOURCE in ${APIRESOURCES[@]}; do
-    NAMESPACES=$(${BIN} get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
+# Describe and Get all namespaced api resources of component across cluster
+
+APIRESOURCES=$(oc get crd -o json | jq -r '.items[] | select((.spec.group | contains ("tekton.dev")) and .spec.scope=="Namespaced") | .spec.group + " " + .metadata.name + " " + .spec.names.plural')
+while read API_GROUP APIRESOURCE API_PLURAL_NAME; do 
+    echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} .."
+    NAMESPACES=$(oc get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
     for NAMESPACE in ${NAMESPACES[@]}; do
-        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
-        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log
-        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml
+        mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/${API_GROUP}/describe
+        oc describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/namespaces/${NAMESPACE}/${API_GROUP}/describe/${API_PLURAL_NAME}
+        oc get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/namespaces/${NAMESPACE}/${API_GROUP}/${API_PLURAL_NAME}.yaml
+    done
+done <<< $APIRESOURCES
+
+# Gather the YAML of Cluster-Scoped CR related to tekton
+
+APIRESOURCES=$(oc get crd -o json | jq -r '.items[] | select((.spec.group | contains ("tekton.dev")) and .spec.scope=="Cluster") | .spec.group + " " + .metadata.name + " " + .spec.names.plural')
+
+while read API_GROUP APIRESOURCE API_PLURAL_NAME; do 
+    mkdir -p ${LOGS_DIR}/cluster-scoped-resources/${API_GROUP}/${API_PLURAL_NAME}/describe
+    echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} .."
+    oc describe ${APIRESOURCE} >${LOGS_DIR}/cluster-scoped-resources/${API_GROUP}/${API_PLURAL_NAME}/describe/${API_PLURAL_NAME} || true
+    oc get ${APIRESOURCE} -o=yaml >${LOGS_DIR}/cluster-scoped-resources/${API_GROUP}/${API_PLURAL_NAME}/${API_PLURAL_NAME}.yaml || true
+done <<< $APIRESOURCES
+
+# Collect resources from openshift-operators, openshift-pipelines and tekton-pipelines namespaces
+echo "gather_pipelines:$LINENO] inspecting ns/openshift-operators ns/openshift-pipelines clusterroles clusterrolebindings podsecuritypolicies .."
+oc adm inspect ns/openshift-operators ns/openshift-pipelines $(oc get clusterroles,clusterrolebindings -o name | egrep -i "tekton|pipelines") $(oc get podsecuritypolicies -o name) --dest-dir=${LOGS_DIR} > /dev/null
+echo "gather_pipelines:$LINENO] inspecting clusterserviceversions subscriptions installplans .."
+oc adm inspect -n openshift-operators $(oc get csv,sub,ip -o name) --dest-dir=${LOGS_DIR} > /dev/null
+echo "gather_pipelines:$LINENO] inspecting roles rolebindings in openshift-pipelines .."
+oc adm inspect -n openshift-pipelines $(oc get roles,rolebindings -o name) --dest-dir=${LOGS_DIR} > /dev/null
+echo "gather_pipelines:$LINENO] inspecting ns/tekton-pipelines .."
+(oc adm inspect ns/tekton-pipelines --dest-dir=${LOGS_DIR} &>/dev/null) || echo "gather_pipelines:$LINENO] inspecting ns/tekton-pipelines .. failed"
+echo "gather_pipelines:$LINENO] inspecting roles rolebindings in tekton-pipelines .."
+(oc adm inspect -n tekton-pipelines $(oc get roles,rolebindings -o name) --dest-dir=${LOGS_DIR} &>/dev/null) || echo "gather_pipelines:$LINENO] inspecting roles rolebindings in tekton-pipelines .. failed"
+
+# Collect logs and yaml specs for pods referenced by TaskRuns
+NAMESPACES=$(oc get taskruns,eventlisteners --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
+for NAMESPACE in ${NAMESPACES[@]}; do 
+    # get all the pods names referenced by taskruns
+    PODS=$(oc get po -n ${NAMESPACE} -o json | jq -r '.items[].metadata | select (.labels."app.kubernetes.io/managed-by"=="tekton-pipelines" or .labels."app.kubernetes.io/managed-by"=="EventListener")| .name' | tr  '\n' ' ')
+    mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/core
+    mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods
+    echo "gather_pipelines:$LINENO] collecting eventlisteners and taskrun pods in ${NAMESPACE} .."
+    eval oc get pod ${PODS} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/namespaces/${NAMESPACE}/core/pods.yaml
+    for POD in ${PODS[@]}; do 
+        echo "gather_pipelines:$LINENO] collecting logs from pod ${POD} in ${NAMESPACE} .."
+        mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}
+        CONTAINERS=$(oc get po -n ${NAMESPACE} ${POD} -o jsonpath='{range .spec.containers[*]}{@.name}{" "}{end}')
+        for CONTAINER in ${CONTAINERS[@]}; do 
+            mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}/${CONTAINER}/${CONTAINER}/logs
+            oc logs -n ${NAMESPACE} ${POD} -c ${CONTAINER} &> ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}/${CONTAINER}/${CONTAINER}/logs/current.log
+        done
     done
 done
 
-# Gather the YAML of Cluster-Scoped CRDS provided by openshift-pipelines operator
-
-APIRESOURCES=(tektonconfigs tektoninstallersets tektonaddons tektonpipelines tektontriggers clustertasks clustertriggerbindings clusterinterceptors)
-
-for APIRESOURCE in ${APIRESOURCES[@]}; do
-    mkdir -p ${LOGS_DIR}/${APIRESOURCE}
-    ${BIN} describe ${APIRESOURCE} >${LOGS_DIR}/${APIRESOURCE}/describe.log || true
-    ${BIN} get ${APIRESOURCE} -o=yaml >${LOGS_DIR}/${APIRESOURCE}/get.yaml || true
-done
-
-# Collect pod logs from openshift-operator for openshift-pipelines-operator
-PODS=$(${BIN} get pods -n openshift-operators -o jsonpath="{.items[*].metadata.name}" | tr ' ' '\n' | grep "openshift-pipelines")
-mkdir -p ${LOGS_DIR}/openshift-operators/pods
-for POD in ${PODS[@]}; do
-    ${BIN} logs --all-containers=true -n openshift-operators ${POD} >${LOGS_DIR}/openshift-operators/pods/${POD}.log
-done
-
-# Collect pod logs, describe & get of api-resources in openshift-pipelines and tekton-pipelines namespace
-
-NAMESPACES=(openshift-pipelines tekton-pipelines)
-APIRESOURCES=(configmaps pods roles rolebindings clusterrole clusterrolebindings serviceaccounts services events podsecuritypolicies poddisruptionbudgets)
-
-for NAMESPACE in ${NAMESPACES[@]}; do
-    PODS=$(${BIN} get pods -n ${NAMESPACE} -o jsonpath="{.items[*].metadata.name}")
-    mkdir -p ${LOGS_DIR}/${NAMESPACE}/pods
-    for POD in ${PODS[@]}; do
-        ${BIN} logs --all-containers=true -n ${NAMESPACE} ${POD} >${LOGS_DIR}/${NAMESPACE}/pods/${POD}.log || true
-    done
-
-    for APIRESOURCE in ${APIRESOURCES[@]}; do
-        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
-        ${BIN} describe ${APIRESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/describe.log || true
-        ${BIN} get ${APIRESOURCE} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/get.yaml || true
-    done
-done
-
+# Collect indipendent logs for eventlistener, taskruns and pipelineruns
 APIRESOURCES=(eventlistener taskrun pipelinerun)
 for APIRESOURCE in ${APIRESOURCES[@]}; do
-    NAMESPACES=$(${BIN} get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
+    NAMESPACES=$(oc get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
     for NAMESPACE in ${NAMESPACES[@]}; do
-        mkdir -p ${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}
-        RESOURCES=$(${BIN} get ${APIRESOURCE} --namespace=${NAMESPACE} --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.name}{"\n"}{end}')
+        mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/logs
+        RESOURCES=$(oc get ${APIRESOURCE} --namespace=${NAMESPACE} --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.name}{"\n"}{end}')
         for RESOURCE in ${RESOURCES[@]}; do
-            tkn ${APIRESOURCE} logs ${RESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/${NAMESPACE}/${APIRESOURCE}/${RESOURCE}.log
+            echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} logs in ${NAMESPACE} .."
+            tkn ${APIRESOURCE} logs ${RESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/logs/${RESOURCE}.log
         done
     done
 done
