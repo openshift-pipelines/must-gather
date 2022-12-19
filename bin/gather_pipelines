@@ -56,7 +56,7 @@ for NAMESPACE in ${NAMESPACES[@]}; do
     echo "gather_pipelines:$LINENO] collecting eventlisteners and taskrun pods in ${NAMESPACE} .."
     eval oc get pod ${PODS} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/namespaces/${NAMESPACE}/core/pods.yaml
     echo "gather_pipelines:$LINENO] inspecting endpoints, services and route in ${NAMESPACE} .."
-    oc adm inspect -n ${NAMESPACE} $(oc get svc,ep,routes -o name) --dest-dir=${LOGS_DIR} > /dev/null
+    oc adm inspect -n ${NAMESPACE} $(oc get svc,ep,routes -o name -n ${NAMESPACE}) --dest-dir=${LOGS_DIR} > /dev/null
     for POD in ${PODS[@]}; do 
         echo "gather_pipelines:$LINENO] collecting logs from pod ${POD} in ${NAMESPACE} .."
         mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}
