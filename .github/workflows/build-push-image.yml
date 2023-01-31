@@ -68,7 +68,7 @@ jobs:
           password: ${{ secrets.QUAY_REGISTRY_PASSWORD }}
       # Build image using buildx
       - name: Build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
