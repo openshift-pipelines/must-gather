@@ -11,7 +11,7 @@ FROM quay.io/openshift/origin-must-gather:$OPENSHIFT_VERSION as gather
 
 FROM registry.access.redhat.com/ubi8/ubi:8.6
 
-COPY --from=gather /usr/bin/gather* /usr/bin
+COPY --from=gather /usr/bin/gather* /usr/bin/
 COPY --from=gather /usr/bin/openshift-must-gather /usr/bin
 COPY --from=gather /usr/bin/version /usr/bin
 COPY bin/* /usr/bin/
