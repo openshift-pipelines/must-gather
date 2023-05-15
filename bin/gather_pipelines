@@ -35,8 +35,8 @@ while read API_GROUP APIRESOURCE API_PLURAL_NAME; do
 done <<< $APIRESOURCES
 
 # Collect resources from openshift-operators, openshift-pipelines and tekton-pipelines namespaces
-echo "gather_pipelines:$LINENO] inspecting ns/openshift-operators ns/openshift-pipelines clusterroles clusterrolebindings podsecuritypolicies .."
-oc adm inspect ns/openshift-operators ns/openshift-pipelines $(oc get clusterroles,clusterrolebindings -o name | egrep -i "tekton|pipelines") $(oc get podsecuritypolicies -o name) --dest-dir=${LOGS_DIR} > /dev/null
+echo "gather_pipelines:$LINENO] inspecting ns/openshift-operators ns/openshift-pipelines clusterroles clusterrolebindings .."
+oc adm inspect ns/openshift-operators ns/openshift-pipelines $(oc get clusterroles,clusterrolebindings -o name | egrep -i "tekton|pipelines")  --dest-dir=${LOGS_DIR} > /dev/null
 echo "gather_pipelines:$LINENO] inspecting clusterserviceversions subscriptions installplans .."
 oc adm inspect -n openshift-operators $(oc get csv,sub,ip -o name) --dest-dir=${LOGS_DIR} > /dev/null
 echo "gather_pipelines:$LINENO] inspecting roles rolebindings in openshift-pipelines .."
