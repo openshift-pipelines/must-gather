@@ -23,7 +23,7 @@ while read API_GROUP APIRESOURCE API_PLURAL_NAME; do
     done
 done <<< $APIRESOURCES
 
-# Gather the YAML of Cluster-Scoped CR related to tekton
+# Gather the YAML of Cluster-Scoped CRs related to tekton
 
 APIRESOURCES=$(oc get crd -o json | jq -r '.items[] | select((.spec.group | contains ("tekton.dev")) and .spec.scope=="Cluster") | .spec.group + " " + .metadata.name + " " + .spec.names.plural')
 
