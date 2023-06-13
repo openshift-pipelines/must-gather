@@ -14,6 +14,12 @@ case "${ARCH}" in
     amd64|x86_64)
         curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-${OPENSHIFT_VERSION}/openshift-client-linux.tar.gz
         ;;
+    arm64)
+        curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/arm64/clients/ocp/stable-${OPENSHIFT_VERSION}/openshift-client-linux.tar.gz
+        ;;
+    aarch64)
+        curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/stable-${OPENSHIFT_VERSION}/openshift-client-linux.tar.gz
+        ;;
     ppc64le)
         curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/ppc64le/clients/ocp/stable-${OPENSHIFT_VERSION}/openshift-client-linux.tar.gz
     ;;
