@@ -1,4 +1,4 @@
-ARG OPENSHIFT_VERSION=4.11
+ARG OPENSHIFT_VERSION=4.12
 
 FROM gcr.io/tekton-releases/dogfooding/tkn:latest as tkn
 FROM fedora as fetcher
