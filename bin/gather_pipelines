@@ -13,7 +13,7 @@ oc adm inspect $(oc get apiservices -o name | grep tekton) $(oc get crd -o name 
 # Describe and Get all namespaced api resources of component across cluster
 
 APIRESOURCES=$(oc get crd -o json | jq -r '.items[] | select((.spec.group | contains ("tekton.dev")) and .spec.scope=="Namespaced") | .spec.group + " " + .metadata.name + " " + .spec.names.plural')
-while read API_GROUP APIRESOURCE API_PLURAL_NAME; do
+while read API_GROUP APIRESOURCE API_PLURAL_NAME; do 
     echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} .."
     NAMESPACES=$(oc get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
     for NAMESPACE in ${NAMESPACES[@]}; do
@@ -27,7 +27,7 @@ done <<< $APIRESOURCES
 
 APIRESOURCES=$(oc get crd -o json | jq -r '.items[] | select((.spec.group | contains ("tekton.dev")) and .spec.scope=="Cluster") | .spec.group + " " + .metadata.name + " " + .spec.names.plural')
 
-while read API_GROUP APIRESOURCE API_PLURAL_NAME; do
+while read API_GROUP APIRESOURCE API_PLURAL_NAME; do 
     mkdir -p ${LOGS_DIR}/cluster-scoped-resources/${API_GROUP}/${API_PLURAL_NAME}/describe
     echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} .."
     oc describe ${APIRESOURCE} >${LOGS_DIR}/cluster-scoped-resources/${API_GROUP}/${API_PLURAL_NAME}/describe/${API_PLURAL_NAME} || true
@@ -48,42 +48,24 @@ echo "gather_pipelines:$LINENO] inspecting roles rolebindings in tekton-pipeline
 
 # Collect logs and yaml specs for pods referenced by TaskRuns
 NAMESPACES=$(oc get taskruns,eventlisteners --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
-for NAMESPACE in ${NAMESPACES[@]}; do
+for NAMESPACE in ${NAMESPACES[@]}; do 
     # get all the pods names referenced by taskruns
     PODS=$(oc get po -n ${NAMESPACE} -o json | jq -r '.items[].metadata | select (.labels."app.kubernetes.io/managed-by"=="tekton-pipelines" or .labels."app.kubernetes.io/managed-by"=="EventListener")| .name' | tr  '\n' ' ')
     mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/core
     mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods
-    mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/events
-
     echo "gather_pipelines:$LINENO] collecting eventlisteners and taskrun pods in ${NAMESPACE} .."
     eval oc get pod ${PODS} -n ${NAMESPACE} -o=yaml >${LOGS_DIR}/namespaces/${NAMESPACE}/core/pods.yaml
-    output=$(oc get svc,ep,routes -n ${NAMESPACE} --ignore-not-found)
-    # Check if the output is empty (no objects found)
-    if [ -z "$output" ]; then
-        echo "The requested objects(svc,ep,routes) do not exist in ${NAMESPACE}"
-    else
-        echo "gather_pipelines:$LINENO] inspecting endpoints, services and route in ${NAMESPACE} .."
-        oc adm inspect -n ${NAMESPACE} $(oc get svc,ep,routes -o name -n ${NAMESPACE}) --dest-dir=${LOGS_DIR} > /dev/null
-    fi
-    for POD in ${PODS[@]}; do
+    echo "gather_pipelines:$LINENO] inspecting endpoints, services and route in ${NAMESPACE} .."
+    oc adm inspect -n ${NAMESPACE} $(oc get svc,ep,routes -o name -n ${NAMESPACE}) --dest-dir=${LOGS_DIR} > /dev/null
+    for POD in ${PODS[@]}; do 
         echo "gather_pipelines:$LINENO] collecting logs from pod ${POD} in ${NAMESPACE} .."
         mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}
         CONTAINERS=$(oc get po -n ${NAMESPACE} ${POD} -o jsonpath='{range .spec.containers[*]}{@.name}{" "}{end}')
-        for CONTAINER in ${CONTAINERS[@]}; do
+        for CONTAINER in ${CONTAINERS[@]}; do 
             mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}/${CONTAINER}/${CONTAINER}/logs
             oc logs -n ${NAMESPACE} ${POD} -c ${CONTAINER} &> ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}/${CONTAINER}/${CONTAINER}/logs/current.log
-            oc get pods -n ${NAMESPACE} ${POD} -oyaml > ${LOGS_DIR}/namespaces/${NAMESPACE}/pods/${POD}/${POD}.yaml
         done
     done
-
-    eventsOutput=$(oc get events -n ${NAMESPACE} --ignore-not-found)
-    if [ -z "$eventsOutput" ]; then
-        echo "The requested events do not exist in ${NAMESPACE}"
-    else
-        echo "gather_pipelines:$LINENO] collecting events in ${NAMESPACE} .."
-        oc get events -n ${NAMESPACE} > ${LOGS_DIR}/namespaces/${NAMESPACE}/events/events
-        oc get events -n ${NAMESPACE} -oyaml > ${LOGS_DIR}/namespaces/${NAMESPACE}/events/events.yaml
-    fi
 done
 
 # Collect indipendent logs for eventlistener, taskruns and pipelineruns
@@ -91,13 +73,11 @@ APIRESOURCES=(eventlistener taskrun pipelinerun)
 for APIRESOURCE in ${APIRESOURCES[@]}; do
     NAMESPACES=$(oc get ${APIRESOURCE} --all-namespaces=true --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.namespace}{"\n"}{end}' | uniq)
     for NAMESPACE in ${NAMESPACES[@]}; do
-        # mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/logs
+        mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/logs
         RESOURCES=$(oc get ${APIRESOURCE} --namespace=${NAMESPACE} --ignore-not-found -o jsonpath='{range .items[*]}{@.metadata.name}{"\n"}{end}')
         for RESOURCE in ${RESOURCES[@]}; do
             echo "gather_pipelines:$LINENO] collecting ${APIRESOURCE} logs in ${NAMESPACE} .."
-            mkdir -p ${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/${RESOURCE}
-            tkn ${APIRESOURCE} logs ${RESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/${RESOURCE}/${RESOURCE}.log
-            oc get ${APIRESOURCE} ${RESOURCE} -n ${NAMESPACE} -oyaml > ${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/${RESOURCE}/${RESOURCE}.yaml
+            tkn ${APIRESOURCE} logs ${RESOURCE} -n ${NAMESPACE} >${LOGS_DIR}/namespaces/${NAMESPACE}/${APIRESOURCE}/logs/${RESOURCE}.log
         done
     done
 done
