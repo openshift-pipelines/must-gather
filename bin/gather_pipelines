@@ -89,3 +89,16 @@ for APIRESOURCE in ${APIRESOURCES[@]}; do
         done
     done
 done
+
+mkdir -p ${LOGS_DIR}/metrics
+echo "gather_pipelines:$LINENO] collecting tekton-pipelines-controller metrics.."
+curl $(oc get -n openshift-pipelines svc/tekton-pipelines-controller -o jsonpath='{.spec.clusterIP}'):9090/metrics > ${LOGS_DIR}/metrics/tekton-pipelines-controller-metrics.log
+
+echo "gather_pipelines:$LINENO] collecting tekton-pipelines-controller metrics.."
+curl $(oc get -n openshift-pipelines svc/tekton-pipelines-webhook -o jsonpath='{.spec.clusterIP}'):9090/metrics > ${LOGS_DIR}/metrics/tekton-pipelines-webhook-metrics.log
+
+echo "gather_pipelines:$LINENO] collecting tekton-triggers-controller metrics.."
+curl $(oc get -n openshift-pipelines svc/tekton-triggers-controller -o jsonpath='{.spec.clusterIP}'):9000/metrics > ${LOGS_DIR}/metrics/tekton-triggers-controller-metrics.log
+
+echo "gather_pipelines:$LINENO] collecting pipelines-as-code-watcher metrics.."
+curl $(oc get -n openshift-pipelines svc/pipelines-as-code-watcher -o jsonpath='{.spec.clusterIP}'):9090/metrics > ${LOGS_DIR}/metrics/pipelines-as-code-watcher-metrics.log
