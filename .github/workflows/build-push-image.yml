@@ -31,7 +31,7 @@ jobs:
         id: prep
         run: |
           DOCKER_IMAGE=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          VERSION=latest
+          VERSION=main
           SHORTREF=${GITHUB_SHA::8}
 
           # If this is git tag, use the tag name as a docker tag
