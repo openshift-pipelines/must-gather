@@ -10,7 +10,7 @@ It currently supports the following architectures:
 ## Usage
 
 ```sh
-oc adm must-gather --image=quay.io/openshift-pipeline/must-gather:v1.0.0
+oc adm must-gather --image=quay.io/openshift-pipeline/must-gather:v1.1.0
 ```
 
 In order to get data about other parts of the cluster (not specific to Pipelines) you should run `oc adm must-gather` (without passing a custom image). Run `oc adm must-gather --help` to see more options.
