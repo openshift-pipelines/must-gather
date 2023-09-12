@@ -56,7 +56,7 @@ jobs:
       # Auth on registry
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ secrets.QUAY_REGISTRY_USERNAME }}
