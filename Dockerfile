@@ -1,4 +1,4 @@
-ARG OPENSHIFT_VERSION=4.17
+ARG OPENSHIFT_VERSION=4.21
 
 FROM ghcr.io/tektoncd/plumbing/tkn:latest AS tkn
 FROM fedora AS fetcher
