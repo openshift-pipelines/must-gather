@@ -7,7 +7,7 @@ ARG OPENSHIFT_VERSION
 COPY hack/ .
 RUN /bin/bash ./fetch-openshift-clients.sh ${OPENSHIFT_VERSION}
 
-FROM quay.io/openshift/origin-must-gather:$OPENSHIFT_VERSION AS gather
+FROM --platform=linux/amd64 quay.io/openshift/origin-must-gather:$OPENSHIFT_VERSION AS gather
 
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
