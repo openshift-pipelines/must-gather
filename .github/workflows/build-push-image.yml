@@ -40,7 +40,7 @@ jobs:
             # It is a tag (release), let's also build latest
             TAGS="$TAGS,${DOCKER_IMAGE}:latest"
           fi
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}"
+          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}${TAGS}"
 
           # Set output parameters.
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
